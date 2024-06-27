@@ -2,6 +2,7 @@ import telebot
 from config import TOKEN
 from telebot import types
 from questions import questions
+
 bot=telebot.TeleBot(TOKEN)
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -41,49 +42,44 @@ def func(message):
         starter = types.KeyboardButton("👉 Давай начнем наш тест 👈")
         markup.add(button1, button2,starter)
         bot.send_message(message.chat.id, text="Вы вернулись в главное меню, и теперь мы готовы приступить к тесту 'Какое у вас тотемное животное'!" ,reply_markup=markup)
+    elif message.text == "👉 Давай начнем наш тест 👈":
+        send_question(message.chat.id)
     else:
         bot.send_message(message.chat.id,text="Такой командой я пока не умею пользоваться")
-# @bot.message_handler(func=lambda message: message.text == "👉 Давай начнем наш тест 👈")
-# def test(message:telebot.types.Message):
-#     for question in questions.keys():
-#         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-#         button1 = types.KeyboardButton("")
-#         button2 = types.KeyboardButton(" ")
-#         button3 = types.KeyboardButton(" ")
-#         back = types.KeyboardButton(" ")
-#         markup.add(button1, button2, button3, back)
-#         bot.send_message(message.chat.id, text=question, reply_markup=markup)
-#         for question in questions.keys():
-#             bot.register_next_step_handler(message,test)
 
 current_question_index = 0
+user_answers = []
 
-@bot.message_handler(func=lambda message: message.text == "👉 Давай начнем наш тест 👈")
-def start_test(message):
-    send_question(message.chat.id)
-def send_question(chat_id):
-    global current_question_index
-    if current_question_index < len(questions):
-        question = list(questions.keys())[current_question_index]
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        button1 = types.KeyboardButton("Ответ 1")
-        button2 = types.KeyboardButton("Ответ 2")
-        button3 = types.KeyboardButton("Ответ 3")
-        button4 = types.KeyboardButton("Ответ 4")
-        markup.add(button1, button2, button3, button4)
-        bot.send_message(chat_id, text=questions[question], reply_markup=markup)
-        current_question_index += 1
-    else:
-        bot.send_message(chat_id, text="Тест завершен. Спасибо за участие!")
-
-@bot.message_handler(func=lambda message: message.text in ["Ответ 1", "Ответ 2", "Ответ 3", "Ответ 4"])
+# Функция для обработки ответов пользователя
+@bot.message_handler(func=lambda message: True)
 def handle_answer(message):
-    send_question(message.chat.id)
+    global current_question_index, user_answers
 
+    if message.text == "👉 Давай начнем наш тест 👈":
+        send_question(message.chat.id)
+    elif current_question_index < len(questions):
+        user_answers.append(message.text)
+        current_question_index += 1
+        send_question(message.chat.id)
+    else:
+        bot.send_message(message.chat.id, f"Спасибо за участие в тесте! Ваши ответы: {', '.join(user_answers)}")
+
+
+
+# Функция для отправки вопроса и кнопок с вариантами ответов
+def send_question(chat_id):
+    question_data = questions[current_question_index]
+    question = question_data["question"]
+    answers = question_data["answers"]
+
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True)
+    for answer in answers:
+        markup.add(types.KeyboardButton(answer))
+
+    msg=bot.send_message(chat_id, text=question, reply_markup=markup)
+    bot.register_next_step_handler(msg,send_question)
 
 bot.infinity_polling()
-
-
 
 
 
